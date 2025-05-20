@@ -1,30 +1,22 @@
-import json
-import os
-from typing import Generator
+from typing import Any
 
-import boto3
 import pytest
-from fastapi.testclient import TestClient
-from moto import mock_secretsmanager
+import pytest_asyncio
+from fastmcp import Client
+
+from metabase_mcp_server.app import mcp
 
 
-@pytest.fixture
-def create_secret():
-    default_config = dict(
-        DATABASE_URI=os.environ['DATABASE_URI'],
-    )
-    with mock_secretsmanager():
-        client = boto3.client('secretsmanager')
-        client.create_secret(
-            Name=os.environ['SECRETS_CONFIG'],
-            SecretString=json.dumps(default_config),
-        )
-        yield
+@pytest_asyncio.fixture(scope="function")
+async def client() -> Client:
+    return Client(mcp)
 
 
-@pytest.fixture
-def client(create_secret) -> Generator[TestClient, None, None]:
-    from mcp_server_metabase.app import app
-
-    client = TestClient(app)
-    yield client
+@pytest.fixture(scope="session")
+def vcr_config() -> dict[str, Any]:
+    config: dict[str, Any] = {
+        "filter_headers": [
+            ("x-api-key", "DUMMY_AUTHORIZATION"),
+        ]
+    }
+    return config
